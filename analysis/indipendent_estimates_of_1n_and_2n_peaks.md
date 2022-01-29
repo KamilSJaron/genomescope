@@ -5,13 +5,15 @@ Original GenomeScope fits a model that is unsuitable for estimating 1n and 2n co
 For this functionality, I will use springtail testing data
 
 ```{R}
-input_file1 <- analysis/real_data/springtails/Afus1_k21_truncated.hist - high coverage male
-input_file2 <- analysis/real_data/springtails/BH3-2_k21_truncated.hist - low coverage male
-input_file3 <- analysis/real_data/springtails/Ocin2_k21_truncated.hist - high coverage male of species without strange patters
-input_file4 <- analysis/real_data/springtails/WW5-3_k21_truncated.hist - low coverage female
+input_file1 <- 'analysis/real_data/springtails/Afus1_k21_truncated.hist' # high coverage male
+input_file2 <- 'analysis/real_data/springtails/BH3-2_k21_truncated.hist' # low coverage male
+input_file3 <- 'analysis/real_data/springtails/Ocin2_k21_truncated.hist' # high coverage male of species without strange patters
+input_file4 <- 'analysis/real_data/springtails/WW5-3_k21_truncated.hist' # low coverage female
 ```
 
-and some exploration of kernel smoothing as replacement.
+### Totally alternative ways to get 1n and 2n coverage
+
+and some exploration of **kernel smoothing** as replacement.
 
 ```{R}
 kmer_spectrum <- read.table(input_file1, col.names = c('coverage', 'frequency'))
@@ -30,9 +32,11 @@ ks <- density(kmer_spectrum[range, 'coverage'], bw = "SJ", adjust = adjust, weig
 
 However, it really truggles with cases then the two peaks are largely overlaping. I think non-linear regression model fitting is a lot better way to go
 
-```
+### Non-linear least sequares
+
+```{R}
 source('R/modeling_functions.R')
-kmer_spectrum <- read.table(input_file3, col.names = c('coverage', 'frequency'))
+kmer_spectrum <- read.table(input_file4, col.names = c('coverage', 'frequency'))
 range <- 4:60
 
 plot(frequency ~ coverage, data = kmer_spectrum[range, ])
