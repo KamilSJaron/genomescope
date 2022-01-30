@@ -77,7 +77,7 @@ nls_2peak_kmer_explicit <- function(x, y, k, estKmercov, estLength, max_iteratio
 nls_2peak_male_X0 <- function(x, y, k, estKmercov, estLength, estR, max_iterations){
     model2 = NULL
 
-    cat("trying nls_2peak_kmer_explicit standard algorithm\n")
+    cat("trying nls_2peak_kmer_X0 standard algorithm\n")
     # fixed parameters
     r = estR
     length = estLength
@@ -103,7 +103,7 @@ predict_monosomic_portion_2peak_male_X0 <- function(x, r, k, kmercov, bias, leng
 nls_2peak_male_XY <- function(x, y, k, estKmercov, estLength, estR, max_iterations){
     model2 = NULL
 
-    cat("trying nls_2peak_kmer_explicit standard algorithm\n")
+    cat("trying nls_2peak_kmer_XY standard algorithm\n")
 
     # fixed parameter
     r = estR
@@ -115,4 +115,46 @@ nls_2peak_male_XY <- function(x, y, k, estKmercov, estLength, estR, max_iteratio
                       control = list(minFactor=1e-12, maxiter=max_iterations)), silent = TRUE)
 
     return(model2)
+}
+
+predict_disomic_portion_2peak_male_XY <- function(x, r, k, kmercov, bias, disomic_length){
+    ((2*(1-(1-r)^k)) * dnbinom(x, size = kmercov   / bias, mu = kmercov) +
+    ((1-r)^k)        * dnbinom(x, size = kmercov * 2 / bias, mu = kmercov * 2)) * disomic_length
+}
+
+predict_monosomic_portion_2peak_male_XY <- function(x, kmercov, bias, monosomic_length){
+    dnbinom(x, size = kmercov / bias, mu = kmercov) * monosomic_length
+}
+
+nls_4peak_male_XY <- function(x, y, k, estKmercov, estLength, estR, estD, max_iterations){
+    model4 = NULL
+
+    cat("trying nls_4peak_kmer_XY standard algorithm\n")
+
+    # fixed parameter
+    r = estR
+    d = estD
+
+    try(model4 <- nls(y ~ (((2*(1-d)*(1-(1-r)^k)) + (2*d*(1-(1-r)^k)^2) + (2*d*((1-r)^k)*(1-(1-r)^k))) * dnbinom(x, size = kmercov   / bias, mu = kmercov)       +
+                          (((1-d)*((1-r)^k)) + (d*(1-(1-r)^k)^2))                                      * dnbinom(x, size = kmercov*2 / bias, mu = kmercov * 2)   +
+                          (2*d*((1-r)^k)*(1-(1-r)^k))                                                  * dnbinom(x, size = kmercov*3 / bias, mu = kmercov * 3)   +
+                          (d*(1-r)^(2*k))                                                              * dnbinom(x, size = kmercov*4 / bias, mu = kmercov * 4))  * disomic_length +
+                          ((1 - d)                                                                     * dnbinom(x, size = kmercov   / bias, mu = kmercov)       +
+                          (d                                                                           * dnbinom(x, size = kmercov*2 / bias, mu = kmercov * 2))) * monosomic_length,
+                      start = list(kmercov=estKmercov, bias = 0.5, monosomic_length = 0.5 * estLength, disomic_length = 0.5 * estLength),
+                      control = list(minFactor=1e-12, maxiter=max_iterations)), silent = TRUE)
+
+    return(model4)
+}
+
+predict_disomic_portion_4peak_male_XY <- function(x, r, d, k, kmercov, bias, disomic_length){
+    (((2*(1-d)*(1-(1-r)^k)) + (2*d*(1-(1-r)^k)^2) + (2*d*((1-r)^k)*(1-(1-r)^k))) * dnbinom(x, size = kmercov   / bias, mu = kmercov)       +
+    (((1-d)*((1-r)^k)) + (d*(1-(1-r)^k)^2))                                      * dnbinom(x, size = kmercov*2 / bias, mu = kmercov * 2)   +
+    (2*d*((1-r)^k)*(1-(1-r)^k))                                                  * dnbinom(x, size = kmercov*3 / bias, mu = kmercov * 3)   +
+    (d*(1-r)^(2*k))                                                              * dnbinom(x, size = kmercov*4 / bias, mu = kmercov * 4)) * disomic_length
+}
+
+predict_monosomic_portion_4peak_male_XY <- function(x, d, kmercov, bias, monosomic_length){
+    ((1 - d)                                                                     * dnbinom(x, size = kmercov   / bias, mu = kmercov)       +
+    (d                                                                           * dnbinom(x, size = kmercov*2 / bias, mu = kmercov * 2))) * monosomic_length
 }

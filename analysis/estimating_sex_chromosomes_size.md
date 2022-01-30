@@ -9,7 +9,7 @@ input_file4 <- 'analysis/real_data/springtails/WW5-3_k21_truncated.hist' # low c
 male_kmer_spectrum <- read.table(input_file1, col.names = c('coverage', 'frequency'))
 # this a globular springtail, the is one more biolgical phenomenon that makes it suboptimal for this benchmark - it has two different karyotypes in two tissues
 # one is X0, second is monoploid including all chormsomes
-# I know the data, so I will "remove" the haploid portion of the sequencing run by subtracting 17x of the coverage, then I will use only 20x and more for fitting (the visual inspection will show you the peak is still there, nothing to worry about)
+# I know the data, so I will "remove" the haploid portion of the sequencing run by subtracting 18x of the coverage, then I will use only 20x and more for fitting (the visual inspection will show you the peak is still there, nothing to worry about)
 male_kmer_spectrum[, 'coverage'] <- male_kmer_spectrum[, 'coverage'] - 18
 
 female_kmer_spectrum <- read.table(input_file4, col.names = c('coverage', 'frequency'))
@@ -85,10 +85,31 @@ I can use the X0 k-mer spectra and fit there the XY model and see if I get the s
 
 ```{R}
 male_model_2peaks_XY <- nls_2peak_male_XY(x, y, k, estKmercov, estLength, estR, max_iterations)
-coef(male_model_2peaks_XY)
+male_parameters_2peaks_XY <- coef(male_model_2peaks_XY)
 ```
 
-This looks good, but I am done for today :-)
+This looks good, plotting this model
+
+```{R}
+barplot <- barplot(y ~ x, col = 'deepskyblue', border = F, xlab = 'Coverage', ylab = 'Frequency')
+lines(predict(male_model_2peaks_XY, response = T) ~ barplot, lwd = 3)
+
+disomic_prediction <- predict_disomic_portion_2peak_male_XY(x, estR, k, male_parameters_2peaks_XY['kmercov'], male_parameters_2peaks_XY['bias'], male_parameters_2peaks_XY['disomic_length'])
+monosomic_prediction <- predict_monosomic_portion_2peak_male_XY(x, male_parameters_2peaks_XY['kmercov'], male_parameters_2peaks_XY['bias'], male_parameters_2peaks_XY['monosomic_length'])
+
+lines(disomic_prediction ~ barplot, lwd = 3, col = 'darkgoldenrod1')
+lines(monosomic_prediction ~ barplot, lwd = 3, col = 'red')
+
+legend('topright',
+       c('kmer histogram','full model', 'autosomes', 'X chromosomes'),
+       col = c('deepskyblue','black', 'darkgoldenrod1', 'red'),
+       lty = c(NA, 1, 1, 1), lwd = 3,
+       pch = c(15, NA, NA, NA), bty = 'n')
+
+total_genome <- round((male_parameters_2peaks_XY['monosomic_length'] + male_parameters_2peaks_XY['disomic_length']) / 1e6, 2)
+X_chrom_size_est <- round(male_parameters_2peaks_XY['monosomic_length'] / 1e6, 2)
+title(paste0('Estimated X chromosome size: ', X_chrom_size_est, ' Mbp out of total ', total_genome, ' Mbp'))
+```
 
 ### 2. using 4 peak model
 
@@ -107,7 +128,66 @@ max_iterations <- 40
 
 VERBOSE=TRUE
 female_model <- nls_4peak(x, y, k, estKmercov, estLength, max_iterations)
-female_estimates <- coef(female_model)
+female_4peak_estimates <- coef(female_model)
 ```
 
-now ...
+and now male
+
+```{R}
+cov_range <- 20:250 # I am taking a wider range of coverages to be sure I have the 3 and 4n peaks too
+
+# visual inspection
+# plot(male_kmer_spectrum[cov_range, 'frequency'] ~ male_kmer_spectrum[cov_range, 'coverage'])
+
+x <- male_kmer_spectrum[cov_range, 'coverage']
+y <- male_kmer_spectrum[cov_range, 'frequency']
+estR <- female_4peak_estimates['r'] # FIXED parameter for male
+estD <- female_4peak_estimates['d']
+estLength <- female_4peak_estimates['length']
+estKmercov <- 45
+
+male_model_4peaks_XY <- nls_4peak_male_XY(x, y, k, estKmercov, estLength, estR, estD, max_iterations)
+male_4peak_estimates <- coef(male_model_4peaks_XY)
+```
+
+Wow, it converged too! I am glad, this is as general as I wished the generalisation to be! Let's plot this puppy..
+
+```{R}
+barplot <- barplot(y ~ x, col = 'deepskyblue', border = F, xlab = 'Coverage', ylab = 'Frequency')
+lines(predict(male_model_4peaks_XY, response = T) ~ barplot, lwd = 3)
+
+disomic_prediction <- predict_disomic_portion_4peak_male_XY(x, estR, estD, k, male_4peak_estimates['kmercov'], male_4peak_estimates['bias'], male_4peak_estimates['disomic_length'])
+monosomic_prediction <- predict_monosomic_portion_4peak_male_XY(x, estD, male_4peak_estimates['kmercov'], male_4peak_estimates['bias'], male_4peak_estimates['monosomic_length'])
+
+lines(disomic_prediction ~ barplot, lwd = 3, col = 'darkgoldenrod1')
+lines(monosomic_prediction ~ barplot, lwd = 3, col = 'red')
+
+legend('topright',
+       c('kmer histogram','full model', 'autosomes', 'X chromosomes'),
+       col = c('deepskyblue','black', 'darkgoldenrod1', 'red'),
+       lty = c(NA, 1, 1, 1), lwd = 3,
+       pch = c(15, NA, NA, NA), bty = 'n')
+
+total_genome <- round((male_parameters_2peaks_XY['monosomic_length'] + male_parameters_2peaks_XY['disomic_length']) / 1e6, 2)
+X_chrom_size_est <- round(male_parameters_2peaks_XY['monosomic_length'] / 1e6, 2)
+title(paste0('Estimated X chromosome size: ', X_chrom_size_est, ' Mbp out of total ', total_genome, ' Mbp'))
+```
+
+## More testing
+
+Eeeexcelent. Let's try more genomes. Some of them will be private.
+
+## Other genomes
+
+- Human
+- Drosophila
+
+X0:
+- Pea aphid
+       - male1: SRR5512719
+       - male2: SRR5512718
+       - female: ERR1957081, ERR1957080, ERR1957079
+- Timema
+       - Darren might make me some, but otherwise they are on NCBI
+- Heliconius
+       - https://www.science.org/doi/10.1126/science.aaw2090 (I could not find male and female from the same species tough)
