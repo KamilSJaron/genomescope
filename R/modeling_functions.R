@@ -158,3 +158,39 @@ predict_monosomic_portion_4peak_male_XY <- function(x, d, kmercov, bias, monosom
     ((1 - d)                                                                     * dnbinom(x, size = kmercov   / bias, mu = kmercov)       +
     (d                                                                           * dnbinom(x, size = kmercov*2 / bias, mu = kmercov * 2))) * monosomic_length
 }
+
+plot_XY_model <- function(XY_model){
+       # variable from the model environment
+       x <- XY_model$m$getEnv()$x
+       y <- XY_model$m$getEnv()$y
+       k <- XY_model$m$getEnv()$k
+       female_r <- XY_model$m$getEnv()$r
+       female_d <- XY_model$m$getEnv()$d
+
+       barplot <- barplot(y ~ x, col = 'deepskyblue', border = F, xlab = 'Coverage', ylab = 'Frequency')
+       lines(predict(XY_model, response = T) ~ barplot, lwd = 3)
+
+       estimates <- coef(XY_model)
+       # extracting all the fitted values
+       kmercov <-  estimates['kmercov']
+       bias <-  estimates['bias']
+       disomic <- estimates['disomic_length']
+       monosomic <- estimates['monosomic_length']
+
+
+       disomic_prediction <- predict_disomic_portion_4peak_male_XY(x, female_r, female_d, k, kmercov, bias, disomic)
+       monosomic_prediction <- predict_monosomic_portion_4peak_male_XY(x, female_d, kmercov, bias, monosomic)
+
+       lines(disomic_prediction ~ barplot, lwd = 3, col = 'darkgoldenrod1')
+       lines(monosomic_prediction ~ barplot, lwd = 3, col = 'red')
+
+       legend('topright',
+              c('kmer histogram','full model', 'autosomes', 'X chromosomes'),
+              col = c('deepskyblue','black', 'darkgoldenrod1', 'red'),
+              lty = c(NA, 1, 1, 1), lwd = 3,
+              pch = c(15, NA, NA, NA), bty = 'n')
+
+       total_genome <- round((monosomic + disomic) / 1e6, 2)
+       X_chrom_size_est <- round(monosomic / 1e6, 2)
+       title(paste0('Estimated size of X + Y: ', X_chrom_size_est, ' Mbp out of total ', total_genome, ' Mbp'))
+}
